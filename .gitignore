@@ -1,0 +1,8 @@
+.DS_Store
+autom4te.cache/
+build/
+include/
+lib-macosx64/
+lib-macosx64_2/
+objdir*/
+*~
