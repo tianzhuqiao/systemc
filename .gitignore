@@ -73,3 +73,4 @@ _UpgradeReport_Files/
 # ignore Doxygen documentation
 /docs/*/doxygen/html/
 /docs/*/doxygen/*.tag
+*.DS_Store

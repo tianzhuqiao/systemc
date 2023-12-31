@@ -70,6 +70,7 @@ class sc_method_process;
 class sc_cthread_process;
 class sc_thread_process;
 class sc_reset_finder;
+class bsm_trace_buf;
 
 
 template< typename > class sc_plist;
@@ -259,6 +260,10 @@ public:
 
     void add_trace_file( sc_trace_file* );
     void remove_trace_file( sc_trace_file* );
+    void add_trace_bsm( sc_trace_file* );
+    bool del_trace_bsm( sc_trace_file* );
+    void add_trace_buf( bsm_trace_buf* );
+    bool del_trace_buf( bsm_trace_buf* );
 
     friend SC_API void    sc_set_time_resolution( double, sc_time_unit );
     friend SC_API sc_time sc_get_time_resolution();
@@ -307,6 +312,8 @@ private:
     void add_timed_event( sc_event_timed* );
 
     void trace_cycle( bool delta_cycle );
+    void trace_cycle_bsm( bool delta_cycle );
+    void trace_cycle_buf( bool delta_cycle );
 
     void execute_method_next( sc_method_handle );
     void execute_thread_next( sc_thread_handle );
@@ -370,6 +377,10 @@ private:
 
     std::vector<sc_trace_file*> m_trace_files;
     bool                        m_something_to_trace;
+    std::vector<sc_trace_file*> m_trace_bsm;
+    bool                       m_something_to_trace_bsm;
+    std::vector<bsm_trace_buf*> m_trace_bufs;
+    bool                        m_something_to_trace_buf;
 
     sc_runnable*                m_runnable;
     sc_process_list*            m_collectable;
@@ -403,6 +414,13 @@ private:
     // disabled
     sc_simcontext( const sc_simcontext& );
     sc_simcontext& operator = ( const sc_simcontext& );
+
+    //basm call back function
+public:
+    typedef  int(*bsm_callback)(int);
+    void bsm_setcallback(bsm_callback pCallBack){m_bsm_callback_fun = pCallBack;}
+private:
+    bsm_callback m_bsm_callback_fun;
 };
 
 // IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
