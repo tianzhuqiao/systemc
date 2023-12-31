@@ -281,6 +281,17 @@ private:
     // read() to a C++ intrinsic data type will work.
     static data_type dummy;
 #endif
+
+public:
+    virtual const char* bsm_type() const {
+        return (*this)->bsm_type();
+    }
+    virtual const std::string bsm_string() const {
+        return (*this)->bsm_string();
+    }
+    virtual bool bsm_to_string(char *buf, int&nLen) const {
+        return (*this)->bsm_to_string(buf, nLen);
+    }
 };
 
 template<typename T>
@@ -1106,6 +1117,20 @@ private:
     // read() to a C++ intrinsic data type will work.
     static data_type dummy;
 #endif
+
+public:
+    virtual const char* bsm_type() const {
+        return (*this)->bsm_type();
+    }
+    virtual const std::string bsm_string() const {
+        return (*this)->bsm_string();
+    }
+    virtual bool bsm_to_string(char *buf, int&nLen) const {
+        return (*this)->bsm_to_string(buf, nLen);
+    }
+    virtual bool bsm_from_string(const char *buf) {
+        return (*this)->bsm_from_string(buf);
+    }
 };
 
 template<typename T>

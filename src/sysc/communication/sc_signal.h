@@ -39,6 +39,17 @@
 #include "sysc/datatypes/bit/sc_logic.h"
 #include "sysc/tracing/sc_trace.h"
 #include <typeinfo>
+#include "sysc/datatypes/int/sc_int.h"
+#include "sysc/datatypes/int/sc_uint.h"
+#include "sysc/datatypes/int/sc_bigint.h"
+#include "sysc/datatypes/int/sc_biguint.h"
+#ifdef SC_INCLUDE_FX
+#include "sysc/datatypes/fx/sc_fixed.h"
+#include "sysc/datatypes/fx/sc_ufixed.h"
+#include "sysc/datatypes/fx/sc_fix.h"
+#endif // #ifdef SC_INCLUDE_FX
+#include "sysc/datatypes/bit/sc_bv.h"
+#include "sysc/datatypes/bit/sc_lv.h"
 
 namespace sc_core {
 
@@ -198,6 +209,12 @@ private:
 
     // disabled
     sc_signal( const this_type& );
+
+public:
+    //wait for the child class to override this function
+    virtual const std::string bsm_string()const{ return std::string("");};
+    virtual bool bsm_to_string(char* /*buf*/, int& /*nLen*/)const{return false;};
+    virtual bool bsm_from_string(const char* /*buf*/){return false;};
 };
 
 
@@ -595,7 +612,48 @@ private:
 
     // disabled
     sc_signal( const this_type& );
+
+public:
+        //wait for the child class to override this function
+        virtual const std::string bsm_string()const;
+        virtual bool bsm_to_string(char *buf, int&nLen)const;
+        virtual bool bsm_from_string(const char *buf);
 };
+
+template< sc_writer_policy POL >
+inline
+const std::string
+sc_signal<sc_dt::sc_logic, POL>::bsm_string()const
+{
+    char str[2] ;
+    str[0] = read().to_char();
+    str[1] = '\0';
+    return std::string(str);
+}
+template< sc_writer_policy POL >
+inline
+bool
+sc_signal<sc_dt::sc_logic, POL>::bsm_to_string(char *buf, int&nLen)const
+{
+    if(buf == 0)
+        nLen = 1;
+    else
+        buf[0] = read().to_char();        ;
+    return true;
+}
+
+template< sc_writer_policy POL >
+inline
+bool
+sc_signal<sc_dt::sc_logic, POL>::bsm_from_string(const char *buf)
+{
+    if(buf == NULL)
+        return false;
+    sc_dt::sc_logic tmp(buf[0]);
+    write(tmp);
+    return true;
+}
+
 
 // ----------------------------------------------------------------------------
 
@@ -607,8 +665,185 @@ operator << ( ::std::ostream& os, const sc_signal<T,POL>& a )
     return ( os << a.read() );
 }
 
+// ----------------------------------------------------------------------------
+//  CLASS : sc_signal<sc_dt::sc_int>
+//
+//  Specialization of sc_signal<T> for type sc_dt::sc_int.
+// ----------------------------------------------------------------------------
+#ifdef DEBUG_SYSTEMC
+#define SC_SIGNAL_TRACE_IMP\
+    sc_trace(tf, read(), name());
+#else
+#define SC_SIGNAL_TRACE_IMP\
+    if(tf) {}
+#endif
+#define SC_SIGNAL_TEMPLATE_IMP(...) template < __VA_ARGS__, sc_writer_policy POL>
+
+#define SC_SIGNAL_IMPLEMENT(BSM_TYPE, TYPE, ...) \
+SC_SIGNAL_TEMPLATE_IMP(__VA_ARGS__)\
+class sc_signal<TYPE, POL >\
+    : public sc_signal_inout_if<TYPE >\
+    , public sc_prim_channel\
+    , protected sc_writer_policy_check<POL>\
+{\
+protected:\
+    typedef sc_signal_inout_if<TYPE > if_type; \
+    typedef sc_signal<TYPE, POL>      this_type; \
+    typedef sc_writer_policy_check<POL>         policy_type;\
+public: \
+    sc_signal()\
+	: sc_prim_channel( sc_gen_unique_name( "signal" ) ),\
+    m_change_event_p(0),\
+    m_cur_val(TYPE()),\
+    m_change_stamp(~sc_dt::UINT64_ONE),\
+    m_new_val(TYPE())\
+	{}\
+    explicit sc_signal( const char* name_ )\
+	: sc_prim_channel( name_ ),\
+    m_change_event_p(0),\
+    m_cur_val(TYPE()),\
+    m_change_stamp(~sc_dt::UINT64_ONE),\
+    m_new_val(TYPE())\
+	{}\
+    sc_signal(const char* name_, TYPE initial_value_)\
+        : sc_prim_channel(name_)\
+        , m_change_event_p(0)\
+        , m_cur_val(initial_value_)\
+        , m_change_stamp(~sc_dt::UINT64_ONE)\
+        , m_new_val(initial_value_)\
+    {}\
+    virtual ~sc_signal() {\
+        delete m_change_event_p;\
+    }\
+    /* interface methods */\
+    virtual void register_port(sc_port_base& port_, const char* if_typename_) {\
+        bool is_output = std::string(if_typename_) == typeid(if_type).name();\
+        if(!policy_type::check_port(this, &port_, is_output))\
+            ((void)0); /* fallback? error has been suppressed ... */\
+    }\
+    virtual sc_writer_policy get_writer_policy() const {\
+        return POL;\
+    }\
+    /* get the default event */\
+    virtual const sc_event& default_event() const {\
+        return value_changed_event();\
+    }\
+    /* get the value changed event */\
+    virtual const sc_event& value_changed_event() const {\
+        return *sc_lazy_kernel_event(&m_change_event_p\
+            , "value_changed_event");\
+    }\
+    /* read the current value */\
+    virtual const TYPE & read() const\
+	{ return m_cur_val; }\
+    /* get a reference to the current value (for tracing) */\
+    virtual const TYPE & get_data_ref() const{\
+        sc_deprecated_get_data_ref();  return m_cur_val;\
+    }\
+    /* was there an event?*/\
+    virtual bool event() const {\
+        return simcontext()->event_occurred(m_change_stamp);\
+    }\
+    /* write the new value */\
+    virtual void write(const TYPE & value_) {\
+        bool value_changed = !(m_cur_val == value_);\
+        if(!policy_type::check_write(this, value_changed))\
+            return;\
+        m_new_val = value_;\
+        if(value_changed) {\
+            request_update();\
+        }\
+    }\
+    /* other methods */\
+    operator const TYPE & () const\
+	{ return read(); }\
+    this_type& operator = ( const TYPE & a )\
+	{ write( a ); return *this; }\
+    this_type& operator = ( const sc_signal_in_if<TYPE >& a )\
+	{ write( a.read() ); return *this; }\
+    this_type& operator = (const this_type& a) {\
+        write(a.read()); return *this;\
+    }\
+    const TYPE & get_new_value() const {\
+        sc_deprecated_get_new_value(); return m_new_val;\
+    }\
+    void trace(sc_trace_file* tf) const {\
+        sc_deprecated_trace();\
+        SC_SIGNAL_TRACE_IMP\
+    }\
+    virtual void print(::std::ostream& os = ::std::cout) const {\
+        os << m_cur_val;\
+    }\
+    virtual void dump(::std::ostream& os = ::std::cout) const {\
+        os << "     name = " << name() << ::std::endl;\
+        os << "    value = " << m_cur_val << ::std::endl;\
+        os << "new value = " << m_new_val << ::std::endl;\
+    }\
+    virtual const char* kind() const\
+        { return "sc_signal"; }\
+protected:\
+    virtual void update() {\
+        policy_type::update();\
+        if(!(m_new_val == m_cur_val)) {\
+            do_update();\
+        }\
+    }\
+    void do_update() {\
+        m_cur_val = m_new_val;\
+        if(m_change_event_p) m_change_event_p->notify_next_delta();\
+        m_change_stamp = simcontext()->change_stamp();\
+    }\
+protected:\
+    mutable sc_event*   m_change_event_p;\
+    TYPE                m_cur_val;\
+    sc_dt::uint64       m_change_stamp;   /* delta of last event */\
+    TYPE                m_new_val;\
+private:\
+    /* disabled */\
+    sc_signal( const this_type& );\
+public:\
+    /* wait for the child class to override this function */\
+    virtual const char* bsm_type() const { return BSM_TYPE; }\
+    virtual const std::string bsm_string()const{return read().to_string();};\
+    virtual bool bsm_to_string(char *buf, int&nLen)const {\
+        std::string str = read().to_string();\
+        if(buf == 0)\
+            nLen = str.length();\
+        else\
+            strncpy(buf, str.c_str(), nLen);\
+        return true;\
+    }\
+    virtual bool bsm_from_string(const char *buf) {\
+        if(buf == NULL)\
+            return false;\
+        TYPE tmp(buf);\
+        write(tmp);\
+        return true;\
+    }\
+};
 
 
+SC_SIGNAL_IMPLEMENT("sc_int", sc_dt::sc_int<W>, int W);
+SC_SIGNAL_IMPLEMENT("sc_uint", sc_dt::sc_uint<W>, int W);
+SC_SIGNAL_IMPLEMENT("sc_bigint", sc_dt::sc_bigint<W>, int W);
+SC_SIGNAL_IMPLEMENT("sc_biguint", sc_dt::sc_biguint<W>, int W);
+
+#ifdef SC_INCLUDE_FX
+#define COMMA ,
+SC_SIGNAL_IMPLEMENT("sc_fixed", sc_dt::sc_fixed<W COMMA I COMMA Q COMMA O COMMA N>, int W, int I, sc_dt::sc_q_mode Q, sc_dt::sc_o_mode O, int N);
+SC_SIGNAL_IMPLEMENT("sc_fixed_fast", sc_dt::sc_fixed_fast<W COMMA I COMMA Q COMMA O COMMA N>, int W, int I, sc_dt::sc_q_mode Q, sc_dt::sc_o_mode O, int N);
+SC_SIGNAL_IMPLEMENT("sc_ufixed", sc_dt::sc_ufixed<W COMMA I COMMA Q COMMA O COMMA N>, int W, int I, sc_dt::sc_q_mode Q, sc_dt::sc_o_mode O, int N);
+#undef SC_SIGNAL_TEMPLATE_IMP
+#define SC_SIGNAL_TEMPLATE_IMP(...) template <sc_writer_policy POL>
+SC_SIGNAL_IMPLEMENT("sc_ufixed", sc_dt::sc_fix);
+#endif //#ifdef SC_INCLUDE_FX
+#undef SC_SIGNAL_TEMPLATE_IMP
+#define SC_SIGNAL_TEMPLATE_IMP(...) template < __VA_ARGS__, sc_writer_policy POL>
+SC_SIGNAL_IMPLEMENT("sc_bv", sc_dt::sc_bv<W>, int W);
+SC_SIGNAL_IMPLEMENT("sc_lv", sc_dt::sc_lv<W>, int W);
+#undef SC_SIGNAL_TEMPLATE_IMP
+#undef SC_SIGNAL_TRACE_IMP
+#undef SC_SIGNAL_IMPLEMENT
 } // namespace sc_core
 
 /*****************************************************************************
