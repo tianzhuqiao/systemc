@@ -72,6 +72,10 @@ namespace sc_core {
 	class vcd_sc_fxnum_fast_trace;
 	class wif_sc_fxnum_trace;
 	class wif_sc_fxnum_fast_trace;
+	class bsm_sc_fxnum_trace;
+	class bsm_sc_fxnum_fast_trace;
+	class buf_sc_fxnum_trace;
+	class buf_sc_fxnum_fast_trace;
 }
 
 
@@ -626,6 +630,8 @@ class SC_API sc_fxnum
 
     friend class sc_core::vcd_sc_fxnum_trace;
     friend class sc_core::wif_sc_fxnum_trace;
+    friend class sc_core::bsm_sc_fxnum_trace;
+    friend class sc_core::buf_sc_fxnum_trace;
 
 protected:
 
@@ -1035,6 +1041,8 @@ class SC_API sc_fxnum_fast
 
     friend class sc_core::vcd_sc_fxnum_fast_trace;
     friend class sc_core::wif_sc_fxnum_fast_trace;
+    friend class sc_core::bsm_sc_fxnum_fast_trace;
+    friend class sc_core::buf_sc_fxnum_fast_trace;
 
 protected:
 

@@ -203,6 +203,10 @@ set(SYSTEMC_CORE_SRC
         sysc/utils/sc_stop_here.cpp
         sysc/utils/sc_utils_ids.cpp
         sysc/utils/sc_vector.cpp
+        sysc/bsm/bsm_sim_context_impl.cpp
+        sysc/bsm/sc_bsm_trace.cpp
+        sysc/bsm/sc_bsm_trace_buf.cpp
+        sysc/bsm/bsm.cpp
         # TLM sources
         tlm_core/tlm_2/tlm_generic_payload/tlm_gp.cpp
         tlm_core/tlm_2/tlm_generic_payload/tlm_phase.cpp
@@ -354,6 +358,17 @@ set(SYSTEMC_CORE_SRC
         sysc/utils/sc_temporary.h
         sysc/utils/sc_utils_ids.h
         sysc/utils/sc_vector.h
+        sysc/bsm/bsm_sysc.h
+        sysc/bsm/reg_type.h
+        sysc/bsm/bsm_object.h
+        sysc/bsm/bsm_buffer_intf.h
+        sysc/bsm/bsm_sim_context.h
+        sysc/bsm/bsm_sim_context_impl.h
+        sysc/bsm/sc_bsm_trace.h
+        sysc/bsm/sc_bsm_trace_buf.h
+        sysc/bsm/bsm.h
+        sysc/bsm/xsc_property.h
+        sysc/bsm/xsc_array.h
         systemc
         systemc.h
         # TLM headers
