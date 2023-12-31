@@ -140,3 +140,4 @@
 #    include <cstring>
 #    include <sstream>
 #endif // SC_INCLUDE_EXTRA_STD_HEADERS
+#include "sysc/bsm/bsm_sysc.h"

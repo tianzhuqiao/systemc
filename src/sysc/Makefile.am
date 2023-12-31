@@ -49,6 +49,7 @@ include communication/files.am
 include datatypes/files.am
 include tracing/files.am
 include utils/files.am
+include bsm/files.am
 
 # include individual third-party packages
 if WANT_QT_THREADS
