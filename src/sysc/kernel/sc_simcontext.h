@@ -454,6 +454,13 @@ private:
     // disabled
     sc_simcontext( const sc_simcontext& );
     sc_simcontext& operator = ( const sc_simcontext& );
+
+public:
+    // bsm callback function
+    typedef  int(*bsm_callback)(int);
+    void bsm_setcallback(bsm_callback pCallBack){m_bsm_callback_fun = pCallBack;}
+private:
+    bsm_callback m_bsm_callback_fun;
 };
 
 // IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII

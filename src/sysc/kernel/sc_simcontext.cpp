@@ -360,6 +360,7 @@ sc_simcontext::init()
     m_stage = (sc_stage)(0);
     m_suspend = 0;
     m_unsuspendable = 0;
+    m_bsm_callback_fun = NULL;
 }
 
 void
@@ -959,6 +960,13 @@ sc_simcontext::simulate( const sc_time& duration )
 		     m_timed_events->top()->notify_time() == t );
 
 	} while( m_runnable->is_empty() );
+
+    // bsm call back
+    if(m_bsm_callback_fun) {
+        int rtn = m_bsm_callback_fun(0);
+        if (rtn == 1) m_paused = true;
+    }
+
     } while ( t < until_t ); // hold off on the delta for the until_t time.
 
 exit_time:  // final simulation time update, if needed
