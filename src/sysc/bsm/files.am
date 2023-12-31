@@ -17,10 +17,10 @@
 ##
 ## ****************************************************************************
 ##
-##  src/sysc/Makefile.am --
-##  Process this file with automake to produce a Makefile.in file.
+##  src/sysc/bsm/files.am --
+##  Included from a Makefile.am to provide directory-specific information
 ##
-##  Original Author: Martin Janssen, Synopsys, Inc., 2001-05-21
+##  Original Author: Philipp A. Hartmann, Intel, 2015-11-24
 ##
 ## ****************************************************************************
 ##
@@ -32,50 +32,40 @@
 ##
 ## ****************************************************************************
 
-include $(top_srcdir)/config/Make-rules.sysc
-AM_CFLAGS   += @DEFS@
-AM_CXXFLAGS += @DEFS@
+## Generic directory setup
+## (should be kept in sync among all files.am files)
+##
+## Note: Recent Automake versions (>1.13) support relative placeholders for
+##       included files (%D%,%C%).  To support older versions, use explicit
+##       names for now.
+##
+## Local values:
+##   %D%: bsm
+##   %C%: bsm
 
-if WANT_QT_THREADS
-QT_LIB    = packages/qt/libqt.la
-QT_SUBDIR = packages/qt
-endif
+H_FILES += \
+    bsm/bsm_sysc.h \
+    bsm/bsm_object.h \
+    bsm/bsm_buffer_intf.h \
+    bsm/bsm_sim_context.h \
+    bsm/bsm.h \
+    bsm/xsc_property.h \
+    bsm/xsc_array.h
 
-# only build external packages separately
-SUBDIRS = \
-	packages/boost \
-	$(QT_SUBDIR)
+NO_H_FILES += \
+    bsm/reg_type.h \
+    bsm/bsm_sim_context_impl.h \
+    bsm/sc_bsm_trace.h \
+    bsm/sc_bsm_trace_buf.h
 
-H_FILES =
-NO_H_FILES =
-CXX_FILES =
-INCDIRS =
-
-# include file lists for sub-directories
-include kernel/files.am
-include communication/files.am
-include datatypes/files.am
-include tracing/files.am
-include utils/files.am
-include bsm/files.am
-
-localincludedir = $(includedir)/sysc
-nobase_localinclude_HEADERS = $(H_FILES)
-
-noinst_LTLIBRARIES = libsysc.la
-
-libsysc_la_SOURCES = $(NO_H_FILES) $(CXX_FILES)
-
-# add dependent (package) libraries
-libsysc_la_LIBADD = \
-       $(QT_LIB)
+CXX_FILES += \
+    bsm/bsm_sim_context_impl.cpp \
+    bsm/sc_bsm_trace.cpp \
+    bsm/sc_bsm_trace_buf.cpp \
+    bsm/bsm.cpp
 
 INCDIRS += \
-	packages
-
-uninstall-hook:
-	test ! -d "$(localincludedir)" || ( set -e ; cd "$(localincludedir)"; \
-	  for dir in $(INCDIRS) ; do test ! -d $$dir || rmdir $$dir ; done ; \
-	  cd - ; rmdir "$(localincludedir)" )
+    bsm
 
 ## Taf!
+## :vim:ft=automake:

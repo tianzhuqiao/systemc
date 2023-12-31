@@ -56,6 +56,7 @@
 #include "sysc/utils/sc_list.h"
 #include "sysc/utils/sc_string_view.h"
 #include "sysc/utils/sc_utils_ids.h"
+#include "sysc/bsm/sc_bsm_trace_buf.h"
 
 #include <algorithm>
 #include <cstring>
@@ -340,6 +341,8 @@ sc_simcontext::init()
     m_next_proc_id = -1;
     m_timed_events = new sc_ppq<sc_event_timed*>( 128, sc_notify_time_compare );
     m_something_to_trace = false;
+    m_something_to_trace_bsm = false;
+    m_something_to_trace_buf = false;
     m_runnable = new sc_runnable;
     m_collectable = new sc_process_list;
     m_time_params = new sc_time_params;
@@ -362,6 +365,7 @@ sc_simcontext::init()
     m_start_of_simulation_called = false;
     m_end_of_simulation_called = false;
     m_simulation_status = SC_ELABORATION;
+    m_bsm_callback_fun = NULL;
 }
 
 void
@@ -389,6 +393,8 @@ sc_simcontext::clean()
     m_delta_events.clear();
     m_child_objects.clear();
     m_trace_files.clear();
+    m_trace_bsm.clear();
+    m_trace_bufs.clear();
 
     while( m_reset_finder_q ) {
         sc_reset_finder* rf = m_reset_finder_q;
@@ -542,6 +548,12 @@ sc_simcontext::crunch( bool once )
 	if( m_something_to_trace ) {
 	    trace_cycle( /* delta cycle? */ true );
 	}
+    if( m_something_to_trace_bsm ) {
+        trace_cycle_bsm( /* delta cycle? */ true );
+    }
+    if( m_something_to_trace_buf ) {
+        trace_cycle_buf( /* delta cycle? */ true );
+    }
 #endif
 
         // check for call(s) to sc_stop
@@ -926,6 +938,13 @@ sc_simcontext::simulate( const sc_time& duration )
 		     m_timed_events->top()->notify_time() == t );
 
 	} while( m_runnable->is_empty() );
+
+    // bsm call back
+    if(m_bsm_callback_fun) {
+        int rtn = m_bsm_callback_fun(0);
+        if (rtn == 1) m_paused = true;
+    }
+
     } while ( t < until_t ); // hold off on the delta for the until_t time.
 
 exit_time:  // final simulation time update, if needed
@@ -948,6 +967,13 @@ sc_simcontext::do_timestep(const sc_time& t)
     if( m_something_to_trace ) {
         trace_cycle( false );
     }
+    if( m_something_to_trace_bsm ) {
+        trace_cycle_bsm( false );
+    }
+    if( m_something_to_trace_buf ) {
+        trace_cycle_buf( false );
+    }
+
 #endif
 
     m_curr_time = t;
@@ -1248,6 +1274,51 @@ sc_simcontext::remove_trace_file( sc_trace_file* tf )
     m_something_to_trace = ( m_trace_files.size() > 0 );
 }
 
+void
+sc_simcontext::add_trace_bsm( sc_trace_file* tf )
+{
+    m_trace_bsm.push_back( tf );
+    m_something_to_trace_bsm = true;
+}
+bool sc_simcontext::del_trace_bsm( sc_trace_file* tf)
+{
+    int size;
+    bool bRtn = false;
+    if((size = m_trace_bsm.size()) != 0) {
+        for(int i = 0; i < size; i++) {
+            if(tf == m_trace_bsm[i]) {
+                m_trace_bsm.erase(m_trace_bsm.begin() + i);
+                bRtn = true;
+                m_something_to_trace_bsm = m_trace_bsm.size() != 0;
+                break;
+            }
+        }
+    }
+    return bRtn;
+}
+void
+sc_simcontext::add_trace_buf( bsm_trace_buf* tf )
+{
+    m_trace_bufs.push_back( tf );
+    m_something_to_trace_buf = true;
+}
+bool sc_simcontext::del_trace_buf( bsm_trace_buf* tf)
+{
+    int size;
+    bool bRtn = false;
+    if( ( size = m_trace_bufs.size() ) != 0 ) {
+        for(int i = 0; i < size; i++) {
+            if(tf == m_trace_bufs[i]) {
+                m_trace_bufs.erase(m_trace_bufs.begin()+i);
+                bRtn = true;
+                m_something_to_trace_buf = m_trace_bufs.size()!=0;
+                break;
+            }
+        }
+    }
+    return bRtn;
+}
+
 sc_cor*
 sc_simcontext::next_cor()
 {
@@ -1527,6 +1598,40 @@ sc_simcontext::trace_cycle( bool delta_cycle )
 	do {
 	    l_trace_files[i]->cycle( delta_cycle );
 	} while( -- i >= 0 );
+    }
+}
+
+void
+sc_simcontext::trace_cycle_bsm( bool delta_cycle )
+{
+    int size;
+    if( ( size = m_trace_bsm.size() ) != 0 ) {
+        for(int i=0;i<size;i++)
+        {
+            m_trace_bsm[i]->cycle( delta_cycle );
+        }
+	//bsm_trace_buf** l_trace_files = m_trace_bufs[i];
+	//int i = size - 1;
+	//do {
+	//    l_trace_files[i]->cycle( delta_cycle );
+	//} while( -- i >= 0 );
+    }
+}
+
+void
+sc_simcontext::trace_cycle_buf( bool delta_cycle )
+{
+    int size;
+    if( ( size = m_trace_bufs.size() ) != 0 ) {
+        for(int i=0;i<size;i++)
+        {
+            m_trace_bufs[i]->cycle( delta_cycle );
+        }
+	//bsm_trace_buf** l_trace_files = m_trace_bufs[i];
+	//int i = size - 1;
+	//do {
+	//    l_trace_files[i]->cycle( delta_cycle );
+	//} while( -- i >= 0 );
     }
 }
 
